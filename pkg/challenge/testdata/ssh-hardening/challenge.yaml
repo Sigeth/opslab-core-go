@@ -1,0 +1,58 @@
+apiVersion: opslab.io/v1alpha1
+kind: ChallengePackage
+metadata:
+  name: ssh-hardening-101
+  version: 1.0.0
+spec:
+  title: Lock down SSH
+  summary: A fresh server ships with a dangerously permissive sshd. Fix it without locking yourself out.
+  category: linux-hardening
+  difficulty: easy
+  estimatedTime: 30m
+  tags: [ssh, cis-benchmark]
+  authors:
+    - name: Jane Doe
+      url: https://github.com/janedoe
+  license: MIT
+  requires:
+    platform: ">=0.1.0"
+  permissions:
+    egress: none
+  lifetime:
+    default: 1h
+    max: 3h
+  machines:
+    - name: server
+      runtime: vm
+      image: ghcr.io/sigeth/opslab-images/ubuntu-24.04-base@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      resources: {cpu: "1", memory: 1Gi}
+      setup: [setup/break-ssh.sh]
+    - name: workstation
+      runtime: pod
+      image: ghcr.io/sigeth/opslab-workstation-base@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      resources: {cpu: 250m, memory: 256Mi}
+  access:
+    terminals:
+      - {machine: workstation, label: Your laptop}
+      - {machine: server}
+  tasks:
+    - id: no-root-login
+      title: Root must not be able to log in over SSH
+      points: 10
+      hints:
+        - {text: "Look at `sshd -T`.", cost: 2}
+      check:
+        machine: server
+        sshLogin: {user: root, expect: denied}
+    - id: no-password-auth
+      title: Disable password authentication
+      points: 10
+      check:
+        machine: server
+        sshLogin: {user: student, method: password, password: student, expect: denied}
+    - id: still-reachable
+      title: "...and you can still log in with your key"
+      points: 5
+      check:
+        machine: server
+        shell: {run: systemctl is-active ssh}

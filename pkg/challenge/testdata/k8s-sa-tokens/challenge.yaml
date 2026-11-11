@@ -1,0 +1,35 @@
+apiVersion: opslab.io/v1alpha1
+kind: ChallengePackage
+metadata:
+  name: k8s-sa-tokens
+  version: 0.1.0
+spec:
+  title: Stop leaking service account tokens
+  summary: Workloads in the payments namespace mount API tokens they never use.
+  category: kubernetes
+  difficulty: medium
+  machines:
+    - name: cluster
+      runtime: vcluster
+      kubernetes: "1.34"
+      seed: [setup/manifests]
+    - name: workstation
+      runtime: pod
+      image: ghcr.io/sigeth/opslab-workstation-k8s@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      kubeconfigFor: cluster
+  access:
+    terminals:
+      - {machine: workstation}
+    ide: {machine: workstation}
+  validation:
+    mode: auto
+    interval: 1m
+  tasks:
+    - id: no-default-sa-token
+      title: Pods in payments must not automount service account tokens
+      points: 15
+      check:
+        machine: cluster
+        kubeCEL:
+          resource: {apiVersion: v1, kind: Pod, namespace: payments}
+          all: object.spec.automountServiceAccountToken == false
