@@ -175,6 +175,11 @@ spec:
                     name:
                       description: Name of the machine.
                       type: string
+                    pod:
+                      description: |-
+                        Pod running the machine, in the instance namespace (pod and sysbox
+                        runtimes). Terminals and checks exec into its MachineContainer.
+                      type: string
                     ready:
                       description: Ready is true when the machine is up and its setup
                         completed.
