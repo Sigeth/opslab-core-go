@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: make lint
+      - run: make test
+      - run: make verify-generated
+      - name: Dependency licenses (MIT-compatible only)
+        run: go run github.com/google/go-licenses/v2@v2.0.1 check ./... --allowed_licenses=MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC
+
+  crds:
+    # CEL rules and schemas are only fully checked by a real API server.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: helm/kind-action@v1
+      - run: kubectl apply --server-side -f crds/
+      - run: kubectl create namespace opslab-instances
+      - run: kubectl apply -f samples/ --dry-run=server
