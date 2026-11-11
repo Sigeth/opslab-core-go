@@ -1,0 +1,5 @@
+# Rejected: a catalog must name trusted signers or explicitly allow unsigned packages.
+apiVersion: opslab.io/v1alpha1
+kind: CatalogSource
+metadata: {name: untrusted}
+spec: {ref: example.com/catalog, trust: {}}

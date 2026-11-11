@@ -1,0 +1,8 @@
+# Rejected: a challenge has exactly one source.
+apiVersion: opslab.io/v1alpha1
+kind: Challenge
+metadata: {name: two-sources}
+spec:
+  source:
+    catalog: {source: official, name: x, version: 1.0.0}
+    oci: {ref: example.com/x, trust: {allowUnsigned: true}}

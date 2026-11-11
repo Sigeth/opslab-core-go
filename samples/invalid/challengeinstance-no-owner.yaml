@@ -1,0 +1,5 @@
+# Rejected: an instance needs an owner.
+apiVersion: opslab.io/v1alpha1
+kind: ChallengeInstance
+metadata: {name: no-owner, namespace: opslab-instances}
+spec: {challenge: hello-shell}

@@ -1,0 +1,23 @@
+# Rejected: a check has exactly one type.
+apiVersion: opslab.io/v1alpha1
+kind: Challenge
+metadata: {name: two-check-types}
+spec:
+  source:
+    inline:
+      package:
+        apiVersion: opslab.io/v1alpha1
+        kind: ChallengePackage
+        metadata: {name: two-check-types, version: 0.1.0}
+        spec:
+          title: x
+          summary: x
+          category: containers
+          difficulty: easy
+          machines: [{name: box, runtime: pod, image: example}]
+          access: {terminals: [{machine: box}]}
+          tasks:
+            - id: t
+              title: t
+              points: 1
+              check: {machine: box, port: {port: 80, expect: open}, http: {port: 80}}

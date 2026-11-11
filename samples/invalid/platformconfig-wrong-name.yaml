@@ -1,0 +1,4 @@
+# Rejected: the only PlatformConfig must be named "default".
+apiVersion: opslab.io/v1alpha1
+kind: PlatformConfig
+metadata: {name: other}
