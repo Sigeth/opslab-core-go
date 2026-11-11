@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Sigeth/opslab-core-go/main/schema/catalog-index.schema.json",
+  "$ref": "#/$defs/CatalogIndex",
+  "$defs": {
+    "CatalogEntry": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the package."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the challenge."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Summary of the challenge.\n+optional"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "linux-hardening",
+            "containers",
+            "kubernetes"
+          ],
+          "description": "Category of the challenge."
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard",
+            "insane"
+          ],
+          "description": "Difficulty of the challenge."
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Tags of the challenge.\n+optional"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/CatalogVersion"
+          },
+          "type": "array",
+          "description": "Versions available, newest first.\n+kubebuilder:validation:MinItems=1"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "title",
+        "category",
+        "difficulty",
+        "versions"
+      ],
+      "description": "CatalogEntry describes one package of a catalog."
+    },
+    "CatalogIndex": {
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "const": "opslab.io/v1alpha1",
+          "description": "APIVersion must be \"opslab.io/v1alpha1\"."
+        },
+        "kind": {
+          "type": "string",
+          "const": "CatalogIndex",
+          "description": "Kind must be \"CatalogIndex\"."
+        },
+        "packages": {
+          "items": {
+            "$ref": "#/$defs/CatalogEntry"
+          },
+          "type": "array",
+          "description": "Packages published by the catalog."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "packages"
+      ],
+      "description": "CatalogIndex is the document a catalog publishes (as a signed OCI artifact) to list its packages."
+    },
+    "CatalogVersion": {
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Version (semver)."
+        },
+        "ref": {
+          "type": "string",
+          "description": "Ref is the OCI reference of the package, pinned by digest\n(registry/repository@sha256:...)."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "version",
+        "ref"
+      ],
+      "description": "CatalogVersion is one published version of a package."
+    }
+  }
+}
