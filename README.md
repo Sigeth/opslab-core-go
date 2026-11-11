@@ -13,6 +13,7 @@ The contracts of [opslab](https://github.com/Sigeth) (working name), a self-host
 | `schema/` | Generated JSON Schemas for `challenge.yaml` and catalog indexes, for editor completion and validation. |
 | `pkg/challenge` | Load, validate and default a challenge package. The operator and the CLI use the same code, so they agree on what a valid package is. |
 | `pkg/checkerio` | The checker contract: environment variables, targets file, JSON-lines task results. |
+| `pkg/kubeexec` | Run commands in containers through the Kubernetes API (operator setup scripts, checker exec checks). |
 | `pkg/project` | Project-wide identifiers (name, API group, owner, platform). Rename here. |
 | `samples/` | Example custom resources. |
 
