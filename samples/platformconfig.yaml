@@ -1,0 +1,7 @@
+apiVersion: opslab.io/v1alpha1
+kind: PlatformConfig
+metadata:
+  name: default
+spec:
+  allowedEgress: none
+  maxInstanceLifetime: 4h

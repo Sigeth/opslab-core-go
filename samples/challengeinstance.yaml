@@ -1,0 +1,8 @@
+apiVersion: opslab.io/v1alpha1
+kind: ChallengeInstance
+metadata:
+  name: hello-shell-alice
+  namespace: opslab-instances
+spec:
+  challenge: hello-shell
+  owner: {userID: "1", displayName: alice}

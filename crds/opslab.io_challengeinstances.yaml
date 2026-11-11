@@ -1,0 +1,231 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.23.0
+  name: challengeinstances.opslab.io
+spec:
+  group: opslab.io
+  names:
+    kind: ChallengeInstance
+    listKind: ChallengeInstanceList
+    plural: challengeinstances
+    shortNames:
+    - ci
+    singular: challengeinstance
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.challenge
+      name: Challenge
+      type: string
+    - jsonPath: .spec.owner.displayName
+      name: Owner
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.expiresAt
+      name: Expires
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ChallengeInstance is one student's running attempt at a challenge.
+          Deleting it tears the environment down; everything in it is lost.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ChallengeInstanceSpec requests a running instance of a challenge.
+            properties:
+              challenge:
+                description: Challenge is the name of the installed Challenge.
+                type: string
+                x-kubernetes-validations:
+                - message: challenge is immutable
+                  rule: self == oldSelf
+              expiresAt:
+                description: |-
+                  ExpiresAt is when the instance is torn down. The platform moves it
+                  forward to extend the instance. Defaults to creation time plus the
+                  challenge's default lifetime; capped by the challenge's and the
+                  platform's maximum lifetime.
+                format: date-time
+                type: string
+              owner:
+                description: Owner of the instance.
+                properties:
+                  displayName:
+                    description: DisplayName of the user, for operators reading kubectl
+                      output.
+                    type: string
+                  userID:
+                    description: UserID is the platform user ID.
+                    type: string
+                required:
+                - userID
+                type: object
+                x-kubernetes-validations:
+                - message: owner is immutable
+                  rule: self == oldSelf
+            required:
+            - challenge
+            - owner
+            type: object
+          status:
+            description: ChallengeInstanceStatus reports the state of an instance.
+            properties:
+              challengeDigest:
+                description: |-
+                  ChallengeDigest is the package digest the instance was created from.
+                  It does not change when the challenge is updated.
+                type: string
+              conditions:
+                description: Conditions of the instance.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              expiresAt:
+                description: ExpiresAt is the effective expiry, after defaults and
+                  caps.
+                format: date-time
+                type: string
+              machines:
+                description: Machines of the instance.
+                items:
+                  description: MachineStatus reports one machine of an instance.
+                  properties:
+                    address:
+                      description: Address reachable from the gateway and the checker
+                        (IP or DNS name).
+                      type: string
+                    name:
+                      description: Name of the machine.
+                      type: string
+                    ready:
+                      description: Ready is true when the machine is up and its setup
+                        completed.
+                      type: boolean
+                    runtime:
+                      description: Runtime of the machine.
+                      enum:
+                      - pod
+                      - sysbox
+                      - vcluster
+                      - vm
+                      type: string
+                  required:
+                  - name
+                  - ready
+                  - runtime
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              message:
+                description: Message explains the current phase (queue position, failure
+                  reason...).
+                type: string
+              namespace:
+                description: Namespace holding the instance resources.
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the generation last processed by
+                  the operator.
+                format: int64
+                type: integer
+              phase:
+                description: Phase of the instance.
+                enum:
+                - Queued
+                - Provisioning
+                - Ready
+                - Expired
+                - Failed
+                type: string
+              readyAt:
+                description: ReadyAt is when the instance first became ready.
+                format: date-time
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

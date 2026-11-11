@@ -1,0 +1,11 @@
+apiVersion: opslab.io/v1alpha1
+kind: CatalogSource
+metadata:
+  name: official
+spec:
+  ref: ghcr.io/sigeth/opslab-catalog:latest
+  syncInterval: 1h
+  trust:
+    keyless:
+      - issuer: https://token.actions.githubusercontent.com
+        subjectRegExp: ^https://github\.com/Sigeth/opslab-challenge-.*/\.github/workflows/release\.yaml@.*$

@@ -1,0 +1,30 @@
+# Local development only: inline packages are not signed.
+apiVersion: opslab.io/v1alpha1
+kind: Challenge
+metadata:
+  name: hello-shell
+spec:
+  source:
+    inline:
+      package:
+        apiVersion: opslab.io/v1alpha1
+        kind: ChallengePackage
+        metadata: {name: hello-shell, version: 0.1.0}
+        spec:
+          title: Hello shell
+          summary: Create a file to prove the platform works end to end.
+          category: linux-hardening
+          difficulty: easy
+          machines:
+            - name: box
+              runtime: pod
+              image: docker.io/library/debian:13-slim
+          access:
+            terminals: [{machine: box}]
+          tasks:
+            - id: hello-file
+              title: Create /tmp/hello containing "opslab"
+              points: 1
+              check:
+                machine: box
+                file: {path: /tmp/hello, contains: opslab}

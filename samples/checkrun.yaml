@@ -1,0 +1,7 @@
+apiVersion: opslab.io/v1alpha1
+kind: CheckRun
+metadata:
+  name: hello-shell-alice-1
+  namespace: opslab-instances
+spec:
+  instance: hello-shell-alice

@@ -1,0 +1,121 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.23.0
+  name: checkruns.opslab.io
+spec:
+  group: opslab.io
+  names:
+    kind: CheckRun
+    listKind: CheckRunList
+    plural: checkruns
+    singular: checkrun
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.instance
+      name: Instance
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: CheckRun is one validation of a ChallengeInstance.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CheckRunSpec requests a validation of an instance.
+            properties:
+              instance:
+                description: Instance is the name of the ChallengeInstance to check
+                  (same namespace).
+                type: string
+              tasks:
+                description: Tasks to check. Empty checks every task.
+                items:
+                  type: string
+                type: array
+            required:
+            - instance
+            type: object
+            x-kubernetes-validations:
+            - message: spec is immutable
+              rule: self == oldSelf
+          status:
+            description: CheckRunStatus reports the outcome of a check run.
+            properties:
+              completedAt:
+                description: CompletedAt is when the run completed or errored.
+                format: date-time
+                type: string
+              message:
+                description: Message explains an error.
+                type: string
+              phase:
+                description: Phase of the run.
+                enum:
+                - Pending
+                - Running
+                - Completed
+                - Error
+                type: string
+              results:
+                description: Results per task.
+                items:
+                  description: |-
+                    TaskResult is the outcome of checking one task. Checkers print one JSON
+                    TaskResult per line on stdout; the operator copies them into CheckRun status.
+                  properties:
+                    message:
+                      description: Message is shown to the student (why it failed,
+                        or a confirmation).
+                      type: string
+                    passed:
+                      description: Passed is true when the task is solved.
+                      type: boolean
+                    task:
+                      description: Task is the task ID.
+                      type: string
+                  required:
+                  - passed
+                  - task
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - task
+                x-kubernetes-list-type: map
+              startedAt:
+                description: StartedAt is when the checker started.
+                format: date-time
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

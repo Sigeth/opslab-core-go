@@ -1,0 +1,10 @@
+apiVersion: opslab.io/v1alpha1
+kind: Challenge
+metadata:
+  name: ssh-hardening-101
+spec:
+  source:
+    catalog:
+      source: official
+      name: ssh-hardening-101
+      version: 1.0.0
