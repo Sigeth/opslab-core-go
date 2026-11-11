@@ -94,15 +94,26 @@ func WriteResult(w io.Writer, r v1alpha1.TaskResult) error {
 	return err
 }
 
+// ParseLog reads results from a checker's container log, where stdout and
+// stderr are merged: lines that are not JSON objects are logs and are
+// skipped. Every JSON object line must be a valid TaskResult.
+func ParseLog(r io.Reader) ([]v1alpha1.TaskResult, error) {
+	return parse(r, true)
+}
+
 // ParseResults reads checker output. Every non-blank line must be a
 // TaskResult; a task reported twice is an error.
 func ParseResults(r io.Reader) ([]v1alpha1.TaskResult, error) {
+	return parse(r, false)
+}
+
+func parse(r io.Reader, skipLogs bool) ([]v1alpha1.TaskResult, error) {
 	var results []v1alpha1.TaskResult
 	seen := map[string]bool{}
 	sc := bufio.NewScanner(r)
 	for n := 1; sc.Scan(); n++ {
 		line := strings.TrimSpace(sc.Text())
-		if line == "" {
+		if line == "" || (skipLogs && !strings.HasPrefix(line, "{")) {
 			continue
 		}
 		var res v1alpha1.TaskResult

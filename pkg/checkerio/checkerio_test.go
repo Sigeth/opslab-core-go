@@ -43,6 +43,20 @@ func TestParseResultsErrors(t *testing.T) {
 	}
 }
 
+func TestParseLogSkipsLogLines(t *testing.T) {
+	log := "starting checker\n{\"task\":\"a\",\"passed\":true}\nwarning: slow machine\n{\"task\":\"b\",\"passed\":false}\n"
+	out, err := ParseLog(strings.NewReader(log))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 || !out[0].Passed || out[1].Task != "b" {
+		t.Fatalf("got %+v", out)
+	}
+	if _, err := ParseLog(strings.NewReader(`{"task":"a","passed":"yes"}`)); err == nil {
+		t.Fatal("a malformed result must be an error")
+	}
+}
+
 func TestTasksFromEnv(t *testing.T) {
 	t.Setenv(EnvTasks, " a, ,b ")
 	if got := TasksFromEnv(); len(got) != 2 || got[0] != "a" || got[1] != "b" {
