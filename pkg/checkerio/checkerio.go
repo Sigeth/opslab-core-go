@@ -44,6 +44,9 @@ type Target struct {
 	SSHPort           int32  `json:"sshPort,omitempty"`
 	SSHUser           string `json:"sshUser,omitempty"`
 	SSHPrivateKeyFile string `json:"sshPrivateKeyFile,omitempty"`
+	// SSHKnownHostsFile lists the accepted host keys (known_hosts format).
+	// Connections to a host whose key is not in it must fail.
+	SSHKnownHostsFile string `json:"sshKnownHostsFile,omitempty"`
 	// StudentPrivateKeyFile is the student's key, for sshLogin checks.
 	StudentPrivateKeyFile string `json:"studentPrivateKeyFile,omitempty"`
 
