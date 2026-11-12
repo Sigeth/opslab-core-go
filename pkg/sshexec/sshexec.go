@@ -29,9 +29,10 @@ const DefaultConnectTimeout = 10 * time.Second
 type Request struct {
 	// Addr is host:port.
 	Addr string
-	// User to log in as, with PrivateKey (OpenSSH PEM).
+	// User to log in as, with PrivateKey (OpenSSH PEM) and/or Password.
 	User       string
 	PrivateKey []byte
+	Password   string
 	// KnownHosts lists the accepted host keys (known_hosts format).
 	KnownHosts []byte
 	// Command run by the user's shell.
@@ -57,45 +58,20 @@ type Executor interface {
 	Run(ctx context.Context, req Request) (Result, error)
 }
 
+// ErrAuthFailed is returned when the server refused every credential: the
+// connection and host key were fine.
+var ErrAuthFailed = errors.New("ssh: login refused")
+
 // New returns an Executor using the network.
 func New() Executor { return executor{} }
 
 type executor struct{}
 
 func (executor) Run(ctx context.Context, req Request) (Result, error) {
-	signer, err := ssh.ParsePrivateKey(req.PrivateKey)
-	if err != nil {
-		return Result{}, fmt.Errorf("parsing the private key: %w", err)
-	}
-	host, err := hostKeys(req.KnownHosts, req.Addr)
+	client, err := connect(ctx, req)
 	if err != nil {
 		return Result{}, err
 	}
-	timeout := req.ConnectTimeout
-	if timeout <= 0 {
-		timeout = DefaultConnectTimeout
-	}
-	config := &ssh.ClientConfig{
-		User:              req.User,
-		Auth:              []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback:   host.check,
-		HostKeyAlgorithms: host.algorithms,
-		Timeout:           timeout,
-	}
-
-	dialer := net.Dialer{Timeout: timeout}
-	conn, err := dialer.DialContext(ctx, "tcp", req.Addr)
-	if err != nil {
-		return Result{}, err
-	}
-	_ = conn.SetDeadline(time.Now().Add(timeout))
-	c, chans, reqs, err := ssh.NewClientConn(conn, req.Addr, config)
-	if err != nil {
-		conn.Close()
-		return Result{}, err
-	}
-	_ = conn.SetDeadline(time.Time{})
-	client := ssh.NewClient(c, chans, reqs)
 	defer client.Close()
 
 	session, err := client.NewSession()
@@ -127,6 +103,79 @@ func (executor) Run(ctx context.Context, req Request) (Result, error) {
 		return Result{}, err
 	}
 	return res, nil
+}
+
+// Login reports whether the server accepts the request's credentials. The
+// error is set when the login could not be attempted (unreachable server,
+// unexpected host key...): a refused login is (false, nil).
+func Login(ctx context.Context, req Request) (bool, error) {
+	client, err := connect(ctx, req)
+	if errors.Is(err, ErrAuthFailed) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	client.Close()
+	return true, nil
+}
+
+// connect opens an authenticated connection.
+func connect(ctx context.Context, req Request) (*ssh.Client, error) {
+	var auth []ssh.AuthMethod
+	if len(req.PrivateKey) > 0 {
+		signer, err := ssh.ParsePrivateKey(req.PrivateKey)
+		if err != nil {
+			return nil, fmt.Errorf("parsing the private key: %w", err)
+		}
+		auth = append(auth, ssh.PublicKeys(signer))
+	}
+	if req.Password != "" {
+		answer := func(_, _ string, questions []string, _ []bool) ([]string, error) {
+			answers := make([]string, len(questions))
+			for i := range answers {
+				answers[i] = req.Password
+			}
+			return answers, nil
+		}
+		auth = append(auth, ssh.Password(req.Password), ssh.KeyboardInteractive(answer))
+	}
+	if len(auth) == 0 {
+		return nil, errors.New("no credentials: set a private key or a password")
+	}
+	host, err := hostKeys(req.KnownHosts, req.Addr)
+	if err != nil {
+		return nil, err
+	}
+	timeout := req.ConnectTimeout
+	if timeout <= 0 {
+		timeout = DefaultConnectTimeout
+	}
+	config := &ssh.ClientConfig{
+		User:              req.User,
+		Auth:              auth,
+		HostKeyCallback:   host.check,
+		HostKeyAlgorithms: host.algorithms,
+		Timeout:           timeout,
+	}
+
+	dialer := net.Dialer{Timeout: timeout}
+	conn, err := dialer.DialContext(ctx, "tcp", req.Addr)
+	if err != nil {
+		return nil, err
+	}
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	c, chans, reqs, err := ssh.NewClientConn(conn, req.Addr, config)
+	if err != nil {
+		conn.Close()
+		// x/crypto/ssh has no typed error for a refused login.
+		if strings.Contains(err.Error(), "unable to authenticate") {
+			return nil, fmt.Errorf("%w: %v", ErrAuthFailed, err)
+		}
+		return nil, err
+	}
+	_ = conn.SetDeadline(time.Time{})
+	return ssh.NewClient(c, chans, reqs), nil
 }
 
 // knownHost holds the accepted keys of one host.

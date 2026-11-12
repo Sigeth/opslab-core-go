@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"strings"
@@ -30,12 +31,20 @@ func newServer(t *testing.T, user string, authorized Key) *server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := &ssh.ServerConfig{PublicKeyCallback: func(c ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-		if c.User() == user && bytes.Equal(key.Marshal(), allowed.Marshal()) {
-			return nil, nil
-		}
-		return nil, io.EOF
-	}}
+	config := &ssh.ServerConfig{
+		PublicKeyCallback: func(c ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+			if c.User() == user && bytes.Equal(key.Marshal(), allowed.Marshal()) {
+				return nil, nil
+			}
+			return nil, io.EOF
+		},
+		PasswordCallback: func(c ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+			if c.User() == user && string(password) == testPassword {
+				return nil, nil
+			}
+			return nil, io.EOF
+		},
+	}
 	config.AddHostKey(signer)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -92,6 +101,8 @@ func serve(conn net.Conn, config *ssh.ServerConfig) {
 	}
 }
 
+const testPassword = "s3cret"
+
 func mustKey(t *testing.T) Key {
 	t.Helper()
 	k, err := GenerateKey()
@@ -146,8 +157,41 @@ func TestRunRejectsUnknownHostKey(t *testing.T) {
 func TestRunRejectedLogin(t *testing.T) {
 	srv := newServer(t, "checker", mustKey(t))
 	req := Request{Addr: srv.addr, User: "checker", PrivateKey: mustKey(t).Private, KnownHosts: knownHosts(t, srv.addr, srv.hostKey), Command: "echo"}
-	if _, err := New().Run(context.Background(), req); err == nil {
-		t.Fatal("login with an unknown key succeeded")
+	if _, err := New().Run(context.Background(), req); !errors.Is(err, ErrAuthFailed) {
+		t.Fatalf("want ErrAuthFailed, got %v", err)
+	}
+}
+
+func TestLogin(t *testing.T) {
+	user := mustKey(t)
+	srv := newServer(t, "student", user)
+	known := knownHosts(t, srv.addr, srv.hostKey)
+	for name, tc := range map[string]struct {
+		req  Request
+		want bool
+	}{
+		"key":            {Request{User: "student", PrivateKey: user.Private}, true},
+		"other key":      {Request{User: "student", PrivateKey: mustKey(t).Private}, false},
+		"other user":     {Request{User: "root", PrivateKey: user.Private}, false},
+		"password":       {Request{User: "student", Password: testPassword}, true},
+		"wrong password": {Request{User: "student", Password: "nope"}, false},
+	} {
+		tc.req.Addr, tc.req.KnownHosts = srv.addr, known
+		got, err := Login(context.Background(), tc.req)
+		if err != nil || got != tc.want {
+			t.Errorf("%s: Login = %v, %v; want %v", name, got, err, tc.want)
+		}
+	}
+
+	// Not a refusal: the login could not be attempted.
+	if _, err := Login(context.Background(), Request{Addr: srv.addr, User: "student", PrivateKey: user.Private, KnownHosts: knownHosts(t, srv.addr, mustKey(t))}); err == nil {
+		t.Error("a changed host key must be an error")
+	}
+	l, _ := net.Listen("tcp", "127.0.0.1:0")
+	closed := l.Addr().String()
+	l.Close()
+	if _, err := Login(context.Background(), Request{Addr: closed, User: "student", PrivateKey: user.Private, KnownHosts: knownHosts(t, closed, srv.hostKey)}); err == nil {
+		t.Error("an unreachable server must be an error")
 	}
 }
 
